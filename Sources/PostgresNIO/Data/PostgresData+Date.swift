@@ -1,4 +1,5 @@
 import struct Foundation.Date
+import class Foundation.DateFormatter
 import NIOCore
 
 extension PostgresData {
@@ -8,6 +9,12 @@ extension PostgresData {
         buffer.writeInteger(Int64(seconds))
         self.init(type: .timestamptz, value: buffer)
     }
+    
+    private static let sharedDateFormatter: DateFormatter = {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSSS Z"
+        return dateFormatter
+    }()
     
     public var date: Date? {
         guard var value = self.value else {
@@ -22,7 +29,9 @@ extension PostgresData {
             case .timestamp, .timestamptz:
                 let microseconds = value.readInteger(as: Int64.self)!
                 let seconds = Double(microseconds) / Double(_microsecondsPerSecond)
-                return Date(timeInterval: seconds, since: _psqlDateStart)
+                let date = Date(timeInterval: seconds, since: _psqlDateStart)
+                let dateString = Self.sharedDateFormatter.string(from: date)
+                return Self.sharedDateFormatter.date(from: dateString)!
             case .time, .timetz:
                 return nil
             case .date:
